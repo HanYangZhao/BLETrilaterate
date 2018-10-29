@@ -1,0 +1,6 @@
+[submodule "library/LinkedList"]
+	path = library/LinkedList
+	url = https://github.com/ivanseidel/LinkedList.git
+[submodule "library/Eigen"]
+	path = library/Eigen
+	url = https://github.com/bolderflight/Eigen.git
