@@ -1,8 +1,19 @@
 #include "BLELocBeacon.h"
+#include <esp_log.h>
 
-static float calculateDistance(int8_t rssi, int8_t measuredTX);
+static float calculateDistance(float rssi, int16_t measuredTX, uint8_t pathLossExp){
+    return pow(10, float((measuredTX - rssi)) / (10 * pathLossExp));
+}
 
-BLELocBeacon::BLELocBeacon(){}
+BLELocBeacon::BLELocBeacon(){
+    _id = 0;
+    _x = 0;
+    _y = 0;
+    _timestamp = 0;
+    _rssi = -999;
+    _distance = 0;
+    _pathLossExp = 2;
+}
 
 BLELocBeacon::BLELocBeacon(char id, float x, float y,  unsigned long lastSeen){
     _id = id;
@@ -10,18 +21,18 @@ BLELocBeacon::BLELocBeacon(char id, float x, float y,  unsigned long lastSeen){
     _y = y;
     _timestamp = lastSeen;
     _rssi = -999;
-    _distance = 999;
+    _distance = 0;
 }
 
-BLELocBeacon::BLELocBeacon(char id, float x, float y, unsigned long lastSeen, float rssi, uint8_t measuredTX){
+BLELocBeacon::BLELocBeacon(char id, float x, float y, unsigned long lastSeen, float rssi, int16_t measuredTX, uint8_t pathLossExp){
     _id = id;
     _x = x;
     _y = y;
     _timestamp = lastSeen;
     _rssi = rssi;
     _measuredTX = measuredTX;
-    _distance = calculateDistance(rssi,measuredTX);
-
+    _distance = calculateDistance(rssi,measuredTX,pathLossExp);
+    _pathLossExp = pathLossExp;
 }
 
 void BLELocBeacon::setFixedPos_X(float x){
@@ -40,7 +51,7 @@ float BLELocBeacon::getFixedPos_X(){
     return _x;
 }
 
-float BLELocBeacon::getFixedPosSqrt_X(){
+float BLELocBeacon::getFixedPosSq_X(){
     return _x*_x;
 }
 
@@ -48,7 +59,7 @@ float BLELocBeacon::getFixedPos_Y(){
     return _y;
 }
 
-float BLELocBeacon::getFixedPosSqrt_Y(){
+float BLELocBeacon::getFixedPosSq_Y(){
     return _y*_y;
 }
 
@@ -68,7 +79,7 @@ float BLELocBeacon::getDistance(){
     return _distance;
 }
 
-float BLELocBeacon::getDistanceSqrt(){
+float BLELocBeacon::getDistanceSq(){
     return _distance * _distance;
 }
 
@@ -76,11 +87,8 @@ float BLELocBeacon::getRSSI(){
     return _rssi;
 }
 
-void BLELocBeacon::setRSSI(float rssi){
-    _rssi = rssi;
-    _distance = calculateDistance(rssi,_measuredTX);
-}
-
-static float calculateDistance(int8_t rssi, int8_t measuredTX){
-    return pow(10, float((measuredTX - rssi)) / (10 * PATH_LOSS_EXP));
+int BLELocBeacon::setRSSI(float rssi){
+    _rssi = _kalmanRssi.updateEstimate(rssi);
+    _distance = calculateDistance(_rssi,_measuredTX,_pathLossExp);
+    return 0;
 }
